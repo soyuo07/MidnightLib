@@ -6,6 +6,13 @@ plugins {
     `maven-publish`
 }
 
+// Disable Gradle's Java compilation on the root template project
+gradle.taskGraph.whenReady {
+    tasks.named<JavaCompile>("compileJava") {
+        actions.clear()
+    }
+}
+
 val minecraft = stonecutter.current.version
 val loader = loom.platform.get().name.lowercase()
 
@@ -13,6 +20,16 @@ version = "${mod.version}+$minecraft"
 group = mod.group
 base {
     archivesName.set("${mod.id}-$loader")
+}
+
+// Exclude Java sources from root template project
+java {
+    sourceSets {
+        named("main") {
+            java.setSrcDirs(emptyList<Any>())
+            resources.setSrcDirs(emptyList<Any>())
+        }
+    }
 }
 
 repositories {
@@ -24,6 +41,12 @@ repositories {
 }
 dependencies {
     minecraft("com.mojang:minecraft:$minecraft")
+
+    // Common dependencies
+    implementation("com.google.code.gson:gson:2.10.1")
+    compileOnly("org.jetbrains:annotations:24.0.1")
+    implementation("org.slf4j:slf4j-api:2.0.9")
+    implementation("com.google.guava:guava:33.0.0-jre")
 
     if (loader == "fabric") {
         modImplementation("net.fabricmc:fabric-loader:${mod.dep("fabric_loader")}")
@@ -54,7 +77,37 @@ loom {
     }
 }
 
-publishMods {
+// Disable Java compilation for root template project
+tasks.named("compileJava").configure {
+    actions.clear()
+    doLast {
+        println("Skipping root template compilation - build from :common, :fabric, or :neoforge instead")
+    }
+}
+
+tasks.processResources {
+    properties(
+        listOf("fabric.mod.json"),
+        "id" to mod.id,
+        "name" to mod.name,
+        "version" to mod.version,
+        "minecraft" to mod.prop("mc_dep_fabric")
+    )
+    properties(
+        listOf("META-INF/mods.toml", "pack.mcmeta"),
+        "id" to mod.id,
+        "name" to mod.name,
+        "version" to mod.version,
+        "minecraft" to mod.prop("mc_dep_forgelike")
+    )
+    properties(
+        listOf("META-INF/neoforge.mods.toml", "pack.mcmeta"),
+        "id" to mod.id,
+        "name" to mod.name,
+        "version" to mod.version,
+        "minecraft" to mod.prop("mc_dep_forgelike")
+    )
+}
     val modrinthToken = System.getenv("MODRINTH_TOKEN")
     val curseforgeToken = System.getenv("CURSEFORGE_TOKEN")
     val githubToken = System.getenv("GITHUB_TOKEN").orEmpty()
@@ -169,30 +222,6 @@ if (stonecutter.current.isActive) {
         group = "project"
         dependsOn(tasks.named("runClient"))
     }
-}
-
-tasks.processResources {
-    properties(
-        listOf("fabric.mod.json"),
-        "id" to mod.id,
-        "name" to mod.name,
-        "version" to mod.version,
-        "minecraft" to mod.prop("mc_dep_fabric")
-    )
-    properties(
-        listOf("META-INF/mods.toml", "pack.mcmeta"),
-        "id" to mod.id,
-        "name" to mod.name,
-        "version" to mod.version,
-        "minecraft" to mod.prop("mc_dep_forgelike")
-    )
-    properties(
-        listOf("META-INF/neoforge.mods.toml", "pack.mcmeta"),
-        "id" to mod.id,
-        "name" to mod.name,
-        "version" to mod.version,
-        "minecraft" to mod.prop("mc_dep_forgelike")
-    )
 }
 
 tasks.build {
