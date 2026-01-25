@@ -25,13 +25,16 @@ public class AutoModMenu implements ModMenuApi {
     public Map<String, ConfigScreenFactory<?>> getProvidedConfigScreenFactories() {
         HashMap<String, ConfigScreenFactory<?>> map = new HashMap<>();
         MidnightConfig.configClass.forEach((modid, cClass) -> {
-            if (!MidnightLib.hiddenMods.contains(modid))
+            if (!MidnightLib.hiddenMods.contains(modid)) {
+                final String id = modid;
                 map.put(modid, new ConfigScreenFactory<Screen>() {
                     @Override
                     public Screen create(Screen parent) {
-                        return MidnightConfig.getScreen(parent, modid);
+                        return MidnightConfig.getScreen(parent, id);
                     }
                 });
-        }); return map;
+            }
+        }); 
+        return map;
     }
 }
